@@ -1,6 +1,7 @@
 CREATE TABLE IF NOT EXISTS pages
 (
     id         UUID PRIMARY KEY,
+    -- app_id mimics the scenario where pages table will be linked to a foreign key of the app or similar
     app_id     UUID                        NOT NULL,
     name       VARCHAR(255)                NOT NULL,
     route      VARCHAR(255)                NOT NULL,
