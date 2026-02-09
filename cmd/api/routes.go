@@ -20,6 +20,12 @@ func (b *backend) routes() http.Handler {
 	router.HandlerFunc(http.MethodPut, "/pages/:id", b.updatePageHandler)
 	router.HandlerFunc(http.MethodDelete, "/pages/:id", b.deletePageHandler)
 
+	// Widget routes
+	router.HandlerFunc(http.MethodPost, "/pages/:id/widgets", b.createWidgetHandler)
+	router.HandlerFunc(http.MethodPost, "/pages/:id/widgets/reorder", b.reorderWidgetsHandler)
+	router.HandlerFunc(http.MethodPut, "/widgets/:id", b.updateWidgetHandler)
+	router.HandlerFunc(http.MethodDelete, "/widgets/:id", b.deleteWidgetHandler)
+
 	return b.recoverPanic(b.enableCors(b.logRequest(router)))
 }
 
