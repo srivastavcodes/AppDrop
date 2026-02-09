@@ -19,7 +19,7 @@ type envelope map[string]any
 func (b *backend) readIdParam(r *http.Request) (uuid.UUID, error) {
 	params := httprouter.ParamsFromContext(r.Context())
 	uid, err := uuid.Parse(params.ByName("id"))
-	if err != nil || uid == uuid.Nil {
+	if err != nil {
 		return uuid.Nil, errors.New("invalid id parameter")
 	}
 	return uid, nil

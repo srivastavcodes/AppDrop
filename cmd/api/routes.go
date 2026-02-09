@@ -8,8 +8,18 @@ import (
 
 func (b *backend) routes() http.Handler {
 	router := httprouter.New()
+	router.HandlerFunc(http.MethodGet, "/healthcheck", b.healthcheckHandler)
 
-	router.HandlerFunc(http.MethodGet, "/v1/healthcheck", b.healthcheckHandler)
+	router.NotFound = http.HandlerFunc(b.notFoundResponse)
+	router.MethodNotAllowed = http.HandlerFunc(b.methodNotAllowedResponse)
+
+	// Page routes
+	router.HandlerFunc(http.MethodPost, "/pages", b.createPageHandler)
+	router.HandlerFunc(http.MethodGet, "/pages/:id", b.showPageHandler)
+	router.HandlerFunc(http.MethodGet, "/pages", b.listPagesHandler)
+	router.HandlerFunc(http.MethodPut, "/pages/:id", b.updatePageHandler)
+	router.HandlerFunc(http.MethodDelete, "/pages/:id", b.deletePageHandler)
+
 	return b.recoverPanic(b.enableCors(b.logRequest(router)))
 }
 

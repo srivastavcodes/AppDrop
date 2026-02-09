@@ -243,18 +243,18 @@ func (pm *PageModel) Delete(id uuid.UUID) error {
 }
 
 // changeIsHomePage sets is_home to false for all pages except the specified one
-func (pm *PageModel) changeIsHomePage(ctx context.Context, appID uuid.UUID, exceptID *uuid.UUID) error {
+func (pm *PageModel) changeIsHomePage(ctx context.Context, appId uuid.UUID, excludeId *uuid.UUID) error {
 	var query string
 	var args []any
 
-	if exceptID == nil {
+	if excludeId == nil {
 		// Unset all home pages for this app
 		query = `UPDATE pages SET is_home = FALSE WHERE app_id = $1 AND is_home = TRUE`
-		args = []any{appID}
+		args = []any{appId}
 	} else {
 		// Unset all except the specified page
 		query = `UPDATE pages SET is_home = FALSE WHERE app_id = $1 AND is_home = TRUE AND id != $2`
-		args = []any{appID, *exceptID}
+		args = []any{appId, *excludeId}
 	}
 	_, err := pm.Db.ExecContext(ctx, query, args...)
 	return err

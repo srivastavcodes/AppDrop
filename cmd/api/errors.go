@@ -34,13 +34,14 @@ func (b *backend) errorResponse(w http.ResponseWriter, r *http.Request, status i
 // serverErrorResponse sends a 500 Internal Server Error response
 func (b *backend) serverErrorResponse(w http.ResponseWriter, r *http.Request, err error) {
 	b.logError(r, err)
-	b.errorResponse(w, r, http.StatusInternalServerError,
-		"SERVER_ERROR", "the server encountered a problem and could not process your request")
+	message := fmt.Sprintf("the server encountered a problem and could not process your request")
+	b.errorResponse(w, r, http.StatusInternalServerError, "SERVER_ERROR", message)
 }
 
 // notFoundResponse sends a 404 Not Found response
 func (b *backend) notFoundResponse(w http.ResponseWriter, r *http.Request) {
-	b.errorResponse(w, r, http.StatusNotFound, "NOT_FOUND", "the requested resource could not be found")
+	message := fmt.Sprintf("the requested resource could not be found: %s, %s", r.URL.Path, r.URL.RawQuery)
+	b.errorResponse(w, r, http.StatusNotFound, "NOT_FOUND", message)
 }
 
 // badRequestResponse sends a 400 Bad Request response
@@ -59,6 +60,12 @@ func (b *backend) conflictResponse(w http.ResponseWriter, r *http.Request, messa
 }
 
 // failedValidationResponse sends a 422 Unprocessable Entity response with validation errors
-func (b *backend) failedValidationResponse(w http.ResponseWriter, r *http.Request, errors map[string]string) {
-	b.errorResponse(w, r, http.StatusUnprocessableEntity, "VALIDATION_ERROR", fmt.Sprintf("validation failed: %v", errors))
+func (b *backend) failedValidationResponse(w http.ResponseWriter, r *http.Request, errs map[string]string) {
+	message := fmt.Sprintf("validation failed: %v", errs)
+	b.errorResponse(w, r, http.StatusUnprocessableEntity, "VALIDATION_ERROR", message)
+}
+
+func (b *backend) methodNotAllowedResponse(w http.ResponseWriter, r *http.Request) {
+	message := fmt.Sprintf("%s method not supported for this request", r.Method)
+	b.errorResponse(w, r, http.StatusMethodNotAllowed, "METHOD_NOT_ALLOWED", message)
 }

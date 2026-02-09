@@ -1,6 +1,7 @@
 package main
 
 import (
+	"appdrop/internal/data"
 	"context"
 	"database/sql"
 	"fmt"
@@ -52,6 +53,7 @@ func main() {
 	b := &backend{
 		logger: logger,
 		conf:   cfg,
+		models: data.NewModels(db),
 	}
 	if err = b.serve(); err != nil {
 		logger.Error(err.Error())
