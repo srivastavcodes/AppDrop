@@ -6,7 +6,7 @@ include .envrc
 
 .PHONY: run/api
 run/api:
-	@go run ./cmd/api -db-dsn=${APP_DROP_DSN}
+	@. ./.envrc && go run ./cmd/api -db-dsn=$${APP_DROP_DSN}
 
 .PHONY: db/mig/new
 db/mig/new:
