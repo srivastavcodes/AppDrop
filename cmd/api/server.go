@@ -1,6 +1,7 @@
 package main
 
 import (
+	"appdrop/internal/data"
 	"context"
 	"errors"
 	"fmt"
@@ -21,17 +22,21 @@ type config struct {
 		maxIdleTime  time.Duration
 		maxIdleConns int
 	}
+	cors struct {
+		allowedOrigins []string
+	}
 }
 
 type backend struct {
-	blog *slog.Logger
-	conf config
-	wg   sync.WaitGroup
+	logger *slog.Logger
+	conf   config
+	models data.Models
+	wg     sync.WaitGroup
 }
 
 func (b *backend) serve() error {
 	srv := &http.Server{
-		ErrorLog:          slog.NewLogLogger(b.blog.Handler(), slog.LevelError),
+		ErrorLog:          slog.NewLogLogger(b.logger.Handler(), slog.LevelError),
 		Addr:              fmt.Sprintf(":%d", b.conf.port),
 		Handler:           b.routes(),
 		ReadHeaderTimeout: 3 * time.Second,
@@ -44,7 +49,7 @@ func (b *backend) serve() error {
 		quit := make(chan os.Signal, 1)
 		signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 		sigv := <-quit
-		b.blog.Info("shutting down server", "signal", sigv)
+		b.logger.Info("shutting down server", "signal", sigv)
 
 		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()
@@ -52,11 +57,11 @@ func (b *backend) serve() error {
 		if err := srv.Shutdown(ctx); err != nil {
 			shutdownErr <- err
 		}
-		b.blog.Info("completing background tasks", "addr", srv.Addr)
+		b.logger.Info("completing background tasks", "addr", srv.Addr)
 		b.wg.Wait()
 		shutdownErr <- nil
 	}()
-	b.blog.Info("server started", "addr", srv.Addr)
+	b.logger.Info("server started", "addr", srv.Addr)
 
 	err := srv.ListenAndServe()
 	if err != nil {
@@ -67,6 +72,6 @@ func (b *backend) serve() error {
 	if err = <-shutdownErr; err != nil {
 		return err
 	}
-	b.blog.Info("server stopped", "addr", srv.Addr)
+	b.logger.Info("server stopped", "addr", srv.Addr)
 	return nil
 }

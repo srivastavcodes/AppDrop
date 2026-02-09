@@ -50,8 +50,8 @@ func main() {
 	logger.Info("database connection established")
 
 	b := &backend{
-		blog: logger,
-		conf: cfg,
+		logger: logger,
+		conf:   cfg,
 	}
 	if err = b.serve(); err != nil {
 		logger.Error(err.Error())
