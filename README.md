@@ -141,11 +141,6 @@ curl http://localhost:4000/pages/{PAGE_ID}
 **For complete API documentation, see:**
 - `API_REQUESTS.md` - Comprehensive examples
 
-**For automated testing:**
-```bash
-./test_api.sh
-```
-
 ## Database Schema
 
 ### Pages Table
