@@ -14,6 +14,7 @@ var (
 // It provides a convenient way to pass model access through handlers and
 // services.
 type Models struct {
+	Stores  StoreModel
 	Pages   PageModel
 	Widgets WidgetModel
 }
@@ -21,6 +22,9 @@ type Models struct {
 // NewModels returns a new model with the fields initialized with the given db.
 func NewModels(db *sql.DB) Models {
 	return Models{
+		Stores: StoreModel{
+			Db: db,
+		},
 		Pages: PageModel{
 			Db: db,
 		},

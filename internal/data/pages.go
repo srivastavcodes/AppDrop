@@ -29,7 +29,7 @@ type PageModel struct {
 
 // Insert creates a new page and returns created at and updated at from db.
 func (pm *PageModel) Insert(page *Page) error {
-	query := `INSERT INTO pages (id, app_id, name, route, is_home) VALUES ($1, $2, $3, $4, $5) 
+	query := `INSERT INTO pages (id, store_id, name, route, is_home) VALUES ($1, $2, $3, $4, $5) 
 		    RETURNING created_at, updated_at`
 
 	args := []any{page.Id, page.StoreId, page.Name, page.Route, page.IsHome}
@@ -58,7 +58,7 @@ func (pm *PageModel) Insert(page *Page) error {
 
 // GetAll returns all pages for a specific app.
 func (pm *PageModel) GetAll() ([]*Page, error) {
-	query := `SELECT id, app_id, name, route, is_home, created_at, updated_at FROM pages 
+	query := `SELECT id, store_id, name, route, is_home, created_at, updated_at FROM pages 
 		    ORDER BY created_at DESC`
 
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
@@ -100,8 +100,8 @@ func (pm *PageModel) GetAllForApp(appID uuid.UUID) ([]*Page, error) {
 	if appID == uuid.Nil {
 		return nil, errors.New("appID is required")
 	}
-	query := `SELECT id, app_id, name, route, is_home, created_at, updated_at FROM pages 
-		    WHERE app_id = $1 ORDER BY created_at DESC`
+	query := `SELECT id, store_id, name, route, is_home, created_at, updated_at FROM pages 
+		    WHERE store_id = $1 ORDER BY created_at DESC`
 
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
@@ -139,7 +139,7 @@ func (pm *PageModel) GetAllForApp(appID uuid.UUID) ([]*Page, error) {
 
 // Get returns a single page with its widgets.
 func (pm *PageModel) Get(id uuid.UUID) (*Page, error) {
-	query := `SELECT id, app_id, name, route, is_home, created_at, updated_at
+	query := `SELECT id, store_id, name, route, is_home, created_at, updated_at
 		    FROM pages WHERE id = $1`
 
 	var page Page
@@ -249,11 +249,11 @@ func (pm *PageModel) changeIsHomePage(ctx context.Context, appId uuid.UUID, excl
 
 	if excludeId == nil {
 		// Unset all home pages for this app
-		query = `UPDATE pages SET is_home = FALSE WHERE app_id = $1 AND is_home = TRUE`
+		query = `UPDATE pages SET is_home = FALSE WHERE store_id = $1 AND is_home = TRUE`
 		args = []any{appId}
 	} else {
 		// Unset all except the specified page
-		query = `UPDATE pages SET is_home = FALSE WHERE app_id = $1 AND is_home = TRUE AND id != $2`
+		query = `UPDATE pages SET is_home = FALSE WHERE store_id = $1 AND is_home = TRUE AND id != $2`
 		args = []any{appId, *excludeId}
 	}
 	_, err := pm.Db.ExecContext(ctx, query, args...)
