@@ -5,10 +5,11 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"time"
 
 	"github.com/google/uuid"
 )
+
+// todo: multiple places to use transactions (later)
 
 // Allowed widget types as per requirements
 var allowedWidgetTypes = map[string]bool{
@@ -21,13 +22,18 @@ var allowedWidgetTypes = map[string]bool{
 
 // createWidgetHandler handles POST /pages/:id/widgets
 func (b *backend) createWidgetHandler(w http.ResponseWriter, r *http.Request) {
-	pageID, err := b.readIdParam(r)
+	storeId, err := b.readIdParam(r, "store_id")
+	if err != nil {
+		b.badRequestResponse(w, r, err)
+		return
+	}
+	pageId, err := b.readIdParam(r, "page_id")
 	if err != nil {
 		b.badRequestResponse(w, r, err)
 		return
 	}
 	// Verify page exists
-	_, err = b.models.Pages.Get(pageID)
+	page, err := b.models.Pages.Get(pageId)
 	if err != nil {
 		switch {
 		case errors.Is(err, data.ErrRecordNotFound):
@@ -35,6 +41,10 @@ func (b *backend) createWidgetHandler(w http.ResponseWriter, r *http.Request) {
 		default:
 			b.serverErrorResponse(w, r, err)
 		}
+		return
+	}
+	if page.StoreId != storeId {
+		b.notFoundResponse(w, r)
 		return
 	}
 	var input struct {
@@ -52,8 +62,7 @@ func (b *backend) createWidgetHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	widget := &data.Widget{
-		Id:     uuid.New(),
-		PageId: pageID,
+		Id: uuid.New(), PageId: pageId,
 		Type:   input.Type,
 		Config: input.Config,
 	}
@@ -63,7 +72,7 @@ func (b *backend) createWidgetHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	headers := make(http.Header)
-	headers.Set("Location", fmt.Sprintf("widgets/%s", widget.Id.String()))
+	headers.Set("Location", fmt.Sprintf("/stores/%s/widgets/%s", storeId, widget.Id))
 
 	err = b.writeJson(w, http.StatusCreated, envelope{"widget": widget}, headers)
 	if err != nil {
@@ -73,9 +82,29 @@ func (b *backend) createWidgetHandler(w http.ResponseWriter, r *http.Request) {
 
 // updateWidgetHandler handles PUT /widgets/:id
 func (b *backend) updateWidgetHandler(w http.ResponseWriter, r *http.Request) {
-	id, err := b.readIdParam(r)
+	storeId, err := b.readIdParam(r, "store_id")
 	if err != nil {
 		b.badRequestResponse(w, r, err)
+		return
+	}
+	pageId, err := b.readIdParam(r, "page_id")
+	if err != nil {
+		b.badRequestResponse(w, r, err)
+		return
+	}
+	// Verify page exists
+	page, err := b.models.Pages.Get(pageId)
+	if err != nil {
+		switch {
+		case errors.Is(err, data.ErrRecordNotFound):
+			b.notFoundResponse(w, r)
+		default:
+			b.serverErrorResponse(w, r, err)
+		}
+		return
+	}
+	if page.StoreId != storeId {
+		b.notFoundResponse(w, r)
 		return
 	}
 	var input struct {
@@ -87,7 +116,7 @@ func (b *backend) updateWidgetHandler(w http.ResponseWriter, r *http.Request) {
 		b.badRequestResponse(w, r, err)
 		return
 	}
-	widget, err := b.models.Widgets.Get(id)
+	widget, err := b.models.Widgets.Get(pageId)
 	if err != nil {
 		switch {
 		case errors.Is(err, data.ErrRecordNotFound):
@@ -109,8 +138,6 @@ func (b *backend) updateWidgetHandler(w http.ResponseWriter, r *http.Request) {
 	if input.Config != nil {
 		widget.Config = *input.Config
 	}
-	widget.UpdatedAt = time.Now()
-
 	err = b.models.Widgets.Update(widget)
 	if err != nil {
 		switch {
@@ -129,12 +156,12 @@ func (b *backend) updateWidgetHandler(w http.ResponseWriter, r *http.Request) {
 
 // deleteWidgetHandler handles DELETE /widgets/:id
 func (b *backend) deleteWidgetHandler(w http.ResponseWriter, r *http.Request) {
-	id, err := b.readIdParam(r)
+	widgetId, err := b.readIdParam(r, "widget_id")
 	if err != nil {
 		b.badRequestResponse(w, r, err)
 		return
 	}
-	err = b.models.Widgets.Delete(id)
+	err = b.models.Widgets.Delete(widgetId)
 	if err != nil {
 		switch {
 		case errors.Is(err, data.ErrRecordNotFound):
@@ -152,13 +179,18 @@ func (b *backend) deleteWidgetHandler(w http.ResponseWriter, r *http.Request) {
 
 // reorderWidgetsHandler handles POST /pages/:id/widgets/reorder
 func (b *backend) reorderWidgetsHandler(w http.ResponseWriter, r *http.Request) {
-	pageID, err := b.readIdParam(r)
+	storeId, err := b.readIdParam(r, "store_id")
+	if err != nil {
+		b.badRequestResponse(w, r, err)
+		return
+	}
+	pageId, err := b.readIdParam(r, "page_id")
 	if err != nil {
 		b.badRequestResponse(w, r, err)
 		return
 	}
 	// Verify page exists
-	_, err = b.models.Pages.Get(pageID)
+	page, err := b.models.Pages.Get(pageId)
 	if err != nil {
 		switch {
 		case errors.Is(err, data.ErrRecordNotFound):
@@ -166,6 +198,10 @@ func (b *backend) reorderWidgetsHandler(w http.ResponseWriter, r *http.Request) 
 		default:
 			b.serverErrorResponse(w, r, err)
 		}
+		return
+	}
+	if page.StoreId != storeId {
+		b.notFoundResponse(w, r)
 		return
 	}
 	var input struct {
@@ -180,8 +216,7 @@ func (b *backend) reorderWidgetsHandler(w http.ResponseWriter, r *http.Request) 
 		b.validationErrorResponse(w, r, "widget_ids array cannot be empty")
 		return
 	}
-
-	err = b.models.Widgets.Reorder(pageID, input.WidgetIds)
+	err = b.models.Widgets.Reorder(pageId, input.WidgetIds)
 	if err != nil {
 		if err.Error() == "some widgets do not belong to this page" {
 			b.validationErrorResponse(w, r, err.Error())

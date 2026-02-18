@@ -16,9 +16,9 @@ import (
 type envelope map[string]any
 
 // readIdParam reads and parses a UUID from URL parameters
-func (b *backend) readIdParam(r *http.Request) (uuid.UUID, error) {
+func (b *backend) readIdParam(r *http.Request, name string) (uuid.UUID, error) {
 	params := httprouter.ParamsFromContext(r.Context())
-	uid, err := uuid.Parse(params.ByName("id"))
+	uid, err := uuid.Parse(params.ByName(name))
 	if err != nil {
 		return uuid.Nil, errors.New("invalid id parameter")
 	}

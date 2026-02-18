@@ -56,49 +56,10 @@ func (pm *PageModel) Insert(page *Page) error {
 	return nil
 }
 
-// GetAll returns all pages for a specific app.
-func (pm *PageModel) GetAll() ([]*Page, error) {
-	query := `SELECT id, store_id, name, route, is_home, created_at, updated_at FROM pages 
-		    ORDER BY created_at DESC`
-
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-	defer cancel()
-
-	rows, err := pm.Db.QueryContext(ctx, query)
-	if err != nil {
-		return nil, err
-	}
-	defer func() {
-		if err := rows.Close(); err != nil {
-			slog.Error("Failed to close rows:", "err", err)
-		}
-	}()
-	var pages []*Page
-
-	for rows.Next() {
-		var page Page
-
-		err := rows.Scan(
-			&page.Id, &page.StoreId,
-			&page.Name, &page.Route,
-			&page.IsHome,
-			&page.CreatedAt, &page.UpdatedAt,
-		)
-		if err != nil {
-			return nil, err
-		}
-		pages = append(pages, &page)
-	}
-	if err = rows.Err(); err != nil {
-		return nil, err
-	}
-	return pages, nil
-}
-
-// GetAllForApp returns all pages for a specific app.
-func (pm *PageModel) GetAllForApp(appID uuid.UUID) ([]*Page, error) {
-	if appID == uuid.Nil {
-		return nil, errors.New("appID is required")
+// GetAllForStore returns all pages for a specific store.
+func (pm *PageModel) GetAllForStore(storeId uuid.UUID) ([]*Page, error) {
+	if storeId == uuid.Nil {
+		return nil, errors.New("storeId is required")
 	}
 	query := `SELECT id, store_id, name, route, is_home, created_at, updated_at FROM pages 
 		    WHERE store_id = $1 ORDER BY created_at DESC`
@@ -106,7 +67,7 @@ func (pm *PageModel) GetAllForApp(appID uuid.UUID) ([]*Page, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
-	rows, err := pm.Db.QueryContext(ctx, query, appID)
+	rows, err := pm.Db.QueryContext(ctx, query, storeId)
 	if err != nil {
 		return nil, err
 	}

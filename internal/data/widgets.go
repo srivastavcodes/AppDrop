@@ -148,8 +148,8 @@ func (m *WidgetModel) Update(widget *Widget) error {
 			return err
 		}
 	}
-	query := `UPDATE widgets SET type = $1, position = $2, config = $3, updated_at = $4 WHERE id = $5 
-		    RETURNING updated_at`
+	query := `UPDATE widgets SET type = $1, position = $2, config = $3, updated_at = NOW() 
+		    WHERE id = $5 RETURNING updated_at`
 
 	args := []any{widget.Type, widget.Position, configJSON, widget.UpdatedAt, widget.Id}
 

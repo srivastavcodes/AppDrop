@@ -14,13 +14,26 @@ import (
 
 // createPageHandler handles POST /pages
 func (b *backend) createPageHandler(w http.ResponseWriter, r *http.Request) {
-	var input struct {
-		AppId  uuid.UUID `json:"app_id"`
-		Name   string    `json:"name"`
-		Route  string    `json:"route"`
-		IsHome bool      `json:"is_home"`
+	storeId, err := b.readIdParam(r, "store_id")
+	if err != nil {
+		b.badRequestResponse(w, r, err)
+		return
 	}
-	err := b.readJson(w, r, &input)
+	if _, err = b.models.Stores.Get(storeId); err != nil {
+		switch {
+		case errors.Is(err, data.ErrRecordNotFound):
+			b.notFoundResponse(w, r)
+		case err != nil:
+			b.serverErrorResponse(w, r, err)
+		}
+		return
+	}
+	var input struct {
+		Name   string `json:"name"`
+		Route  string `json:"route"`
+		IsHome bool   `json:"is_home"`
+	}
+	err = b.readJson(w, r, &input)
 	if err != nil {
 		b.badRequestResponse(w, r, err)
 		return
@@ -34,13 +47,8 @@ func (b *backend) createPageHandler(w http.ResponseWriter, r *http.Request) {
 		b.validationErrorResponse(w, r, "page route is required and cannot be empty")
 		return
 	}
-	// For this assignment, we'll use a default app_id if not provided
-	// In production, this would come from the authentication context
-	if input.AppId == uuid.Nil {
-		input.AppId = uuid.MustParse("00000000-0000-0000-0000-000000000001")
-	}
 	page := &data.Page{
-		Id: uuid.New(), StoreId: input.AppId,
+		Id: uuid.New(), StoreId: storeId,
 		IsHome: input.IsHome,
 		Name:   input.Name, Route: input.Route,
 	}
@@ -54,7 +62,7 @@ func (b *backend) createPageHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	headers := make(http.Header)
-	headers.Set("Location", fmt.Sprintf("/pages/%v", page.Id))
+	headers.Set("Location", fmt.Sprintf("stores/%s/pages/%s", storeId, page.Id))
 
 	err = b.writeJson(w, http.StatusCreated, envelope{"page": page}, headers)
 	if err != nil {
@@ -64,25 +72,12 @@ func (b *backend) createPageHandler(w http.ResponseWriter, r *http.Request) {
 
 // listPagesHandler handles GET /pages
 func (b *backend) listPagesHandler(w http.ResponseWriter, r *http.Request) {
-	pages, err := b.models.Pages.GetAll()
-	if err != nil {
-		b.serverErrorResponse(w, r, err)
-		return
-	}
-	err = b.writeJson(w, http.StatusOK, envelope{"pages": pages}, nil)
-	if err != nil {
-		b.serverErrorResponse(w, r, err)
-	}
-}
-
-// listPagesHandler handles GET /pages
-func (b *backend) listPagesForAppHandler(w http.ResponseWriter, r *http.Request) {
-	id, err := b.readIdParam(r)
+	id, err := b.readIdParam(r, "store_id")
 	if err != nil {
 		b.badRequestResponse(w, r, err)
 		return
 	}
-	pages, err := b.models.Pages.GetAllForApp(id)
+	pages, err := b.models.Pages.GetAllForStore(id)
 	if err != nil {
 		b.serverErrorResponse(w, r, err)
 		return
@@ -95,12 +90,17 @@ func (b *backend) listPagesForAppHandler(w http.ResponseWriter, r *http.Request)
 
 // showPageHandler handles GET /pages/:id
 func (b *backend) showPageHandler(w http.ResponseWriter, r *http.Request) {
-	id, err := b.readIdParam(r)
+	storeId, err := b.readIdParam(r, "store_id")
 	if err != nil {
 		b.badRequestResponse(w, r, err)
 		return
 	}
-	page, err := b.models.Pages.Get(id)
+	pageId, err := b.readIdParam(r, "page_id")
+	if err != nil {
+		b.badRequestResponse(w, r, err)
+		return
+	}
+	page, err := b.models.Pages.Get(pageId)
 	if err != nil {
 		switch {
 		case errors.Is(err, data.ErrRecordNotFound):
@@ -108,6 +108,10 @@ func (b *backend) showPageHandler(w http.ResponseWriter, r *http.Request) {
 		default:
 			b.serverErrorResponse(w, r, err)
 		}
+		return
+	}
+	if page.StoreId != storeId {
+		b.notFoundResponse(w, r)
 		return
 	}
 	err = b.writeJson(w, http.StatusOK, envelope{"page": page}, nil)
@@ -118,12 +122,17 @@ func (b *backend) showPageHandler(w http.ResponseWriter, r *http.Request) {
 
 // updatePageHandler handles PUT /pages/:id
 func (b *backend) updatePageHandler(w http.ResponseWriter, r *http.Request) {
-	id, err := b.readIdParam(r)
+	storeId, err := b.readIdParam(r, "store_id")
 	if err != nil {
 		b.badRequestResponse(w, r, err)
 		return
 	}
-	page, err := b.models.Pages.Get(id)
+	pageId, err := b.readIdParam(r, "page_id")
+	if err != nil {
+		b.badRequestResponse(w, r, err)
+		return
+	}
+	page, err := b.models.Pages.Get(pageId)
 	if err != nil {
 		switch {
 		case errors.Is(err, data.ErrRecordNotFound):
@@ -131,6 +140,10 @@ func (b *backend) updatePageHandler(w http.ResponseWriter, r *http.Request) {
 		default:
 			b.serverErrorResponse(w, r, err)
 		}
+		return
+	}
+	if page.StoreId != storeId {
+		b.notFoundResponse(w, r)
 		return
 	}
 	var input struct {
@@ -160,9 +173,7 @@ func (b *backend) updatePageHandler(w http.ResponseWriter, r *http.Request) {
 	if input.IsHome != nil {
 		page.IsHome = *input.IsHome
 	}
-
-	err = b.models.Pages.Update(page)
-	if err != nil {
+	if err = b.models.Pages.Update(page); err != nil {
 		switch {
 		case errors.Is(err, data.ErrRecordNotFound):
 			b.notFoundResponse(w, r)
@@ -181,12 +192,31 @@ func (b *backend) updatePageHandler(w http.ResponseWriter, r *http.Request) {
 
 // deletePageHandler handles DELETE /pages/:id
 func (b *backend) deletePageHandler(w http.ResponseWriter, r *http.Request) {
-	id, err := b.readIdParam(r)
+	storeId, err := b.readIdParam(r, "store_id")
 	if err != nil {
 		b.badRequestResponse(w, r, err)
 		return
 	}
-	err = b.models.Pages.Delete(id)
+	pageId, err := b.readIdParam(r, "page_id")
+	if err != nil {
+		b.badRequestResponse(w, r, err)
+		return
+	}
+	page, err := b.models.Pages.Get(pageId)
+	if err != nil {
+		switch {
+		case errors.Is(err, data.ErrRecordNotFound):
+			b.notFoundResponse(w, r)
+		default:
+			b.serverErrorResponse(w, r, err)
+		}
+		return
+	}
+	if page.StoreId != storeId {
+		b.notFoundResponse(w, r)
+		return
+	}
+	err = b.models.Pages.Delete(pageId)
 	if err != nil {
 		switch {
 		case errors.Is(err, data.ErrRecordNotFound):
