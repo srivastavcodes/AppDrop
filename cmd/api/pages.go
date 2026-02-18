@@ -40,7 +40,7 @@ func (b *backend) createPageHandler(w http.ResponseWriter, r *http.Request) {
 		input.AppId = uuid.MustParse("00000000-0000-0000-0000-000000000001")
 	}
 	page := &data.Page{
-		Id: uuid.New(), AppId: input.AppId,
+		Id: uuid.New(), StoreId: input.AppId,
 		IsHome: input.IsHome,
 		Name:   input.Name, Route: input.Route,
 	}

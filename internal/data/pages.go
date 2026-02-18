@@ -14,7 +14,7 @@ import (
 
 type Page struct {
 	Id        uuid.UUID `json:"id"`
-	AppId     uuid.UUID `json:"app_id"`
+	StoreId   uuid.UUID `json:"store_id"`
 	Name      string    `json:"name"`
 	Route     string    `json:"route"`
 	IsHome    bool      `json:"is_home"`
@@ -32,14 +32,14 @@ func (pm *PageModel) Insert(page *Page) error {
 	query := `INSERT INTO pages (id, app_id, name, route, is_home) VALUES ($1, $2, $3, $4, $5) 
 		    RETURNING created_at, updated_at`
 
-	args := []any{page.Id, page.AppId, page.Name, page.Route, page.IsHome}
+	args := []any{page.Id, page.StoreId, page.Name, page.Route, page.IsHome}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
 	// If this page is set as home, unset all other home pages for this app
 	if page.IsHome {
-		err := pm.changeIsHomePage(ctx, page.AppId, nil)
+		err := pm.changeIsHomePage(ctx, page.StoreId, nil)
 		if err != nil {
 			return err
 		}
@@ -79,7 +79,7 @@ func (pm *PageModel) GetAll() ([]*Page, error) {
 		var page Page
 
 		err := rows.Scan(
-			&page.Id, &page.AppId,
+			&page.Id, &page.StoreId,
 			&page.Name, &page.Route,
 			&page.IsHome,
 			&page.CreatedAt, &page.UpdatedAt,
@@ -121,7 +121,7 @@ func (pm *PageModel) GetAllForApp(appID uuid.UUID) ([]*Page, error) {
 		var page Page
 
 		err := rows.Scan(
-			&page.Id, &page.AppId,
+			&page.Id, &page.StoreId,
 			&page.Name, &page.Route,
 			&page.IsHome,
 			&page.CreatedAt, &page.UpdatedAt,
@@ -148,7 +148,7 @@ func (pm *PageModel) Get(id uuid.UUID) (*Page, error) {
 	defer cancel()
 
 	err := pm.Db.QueryRowContext(ctx, query, id).Scan(
-		&page.Id, &page.AppId,
+		&page.Id, &page.StoreId,
 		&page.Name, &page.Route,
 		&page.IsHome,
 		&page.CreatedAt, &page.UpdatedAt,
@@ -184,7 +184,7 @@ func (pm *PageModel) Update(page *Page) error {
 
 	// If setting this as home, unset all others for this app first
 	if page.IsHome {
-		err := pm.changeIsHomePage(ctx, page.AppId, &page.Id)
+		err := pm.changeIsHomePage(ctx, page.StoreId, &page.Id)
 		if err != nil {
 			return err
 		}
