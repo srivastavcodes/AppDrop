@@ -1,4 +1,4 @@
 ALTER TABLE pages
-    DROP CONSTRAINT IF EXISTS fk_pages_stores;
+    DROP CONSTRAINT IF EXISTS fk_pages_store;
 
 DROP TABLE IF EXISTS stores;

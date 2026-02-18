@@ -8,4 +8,4 @@ CREATE TABLE IF NOT EXISTS stores
 );
 
 ALTER TABLE pages
-    ADD CONSTRAINT fk_pages_store FOREIGN KEY (app_id) REFERENCES stores (id) ON DELETE CASCADE;
+    ADD CONSTRAINT fk_pages_store FOREIGN KEY (store_id) REFERENCES stores (id) ON DELETE CASCADE;
