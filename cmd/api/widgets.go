@@ -107,6 +107,11 @@ func (b *backend) updateWidgetHandler(w http.ResponseWriter, r *http.Request) {
 		b.notFoundResponse(w, r)
 		return
 	}
+	widgetId, err := b.readIdParam(r, "id")
+	if err != nil {
+		b.badRequestResponse(w, r, err)
+		return
+	}
 	var input struct {
 		Type   *string         `json:"type"`
 		Config *map[string]any `json:"config"`
@@ -116,7 +121,7 @@ func (b *backend) updateWidgetHandler(w http.ResponseWriter, r *http.Request) {
 		b.badRequestResponse(w, r, err)
 		return
 	}
-	widget, err := b.models.Widgets.Get(pageId)
+	widget, err := b.models.Widgets.Get(widgetId)
 	if err != nil {
 		switch {
 		case errors.Is(err, data.ErrRecordNotFound):
@@ -156,7 +161,7 @@ func (b *backend) updateWidgetHandler(w http.ResponseWriter, r *http.Request) {
 
 // deleteWidgetHandler handles DELETE /widgets/:id
 func (b *backend) deleteWidgetHandler(w http.ResponseWriter, r *http.Request) {
-	widgetId, err := b.readIdParam(r, "widget_id")
+	widgetId, err := b.readIdParam(r, "id")
 	if err != nil {
 		b.badRequestResponse(w, r, err)
 		return

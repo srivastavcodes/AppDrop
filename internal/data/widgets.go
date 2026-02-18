@@ -149,9 +149,9 @@ func (m *WidgetModel) Update(widget *Widget) error {
 		}
 	}
 	query := `UPDATE widgets SET type = $1, position = $2, config = $3, updated_at = NOW() 
-		    WHERE id = $5 RETURNING updated_at`
+		    WHERE id = $4 RETURNING updated_at`
 
-	args := []any{widget.Type, widget.Position, configJSON, widget.UpdatedAt, widget.Id}
+	args := []any{widget.Type, widget.Position, configJSON, widget.Id}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
