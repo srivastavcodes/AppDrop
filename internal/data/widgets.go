@@ -104,6 +104,39 @@ func (m *WidgetModel) Insert(widget *Widget) error {
 	return err
 }
 
+// Get returns a single widget by ID.
+func (m *WidgetModel) Get(id uuid.UUID) (*Widget, error) {
+	query := `SELECT id, page_id, type, position, config, created_at, updated_at FROM widgets 
+		    WHERE id = $1`
+	var widget Widget
+
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	var configJSON []byte
+
+	err := m.Db.QueryRowContext(ctx, query, id).Scan(
+		&widget.Id, &widget.PageId,
+		&widget.Type, &widget.Position,
+		&configJSON,
+		&widget.CreatedAt, &widget.UpdatedAt,
+	)
+	if err != nil {
+		switch {
+		case errors.Is(err, sql.ErrNoRows):
+			return nil, ErrRecordNotFound
+		default:
+			return nil, err
+		}
+	}
+	if configJSON != nil {
+		if err = json.Unmarshal(configJSON, &widget.Config); err != nil {
+			return nil, err
+		}
+	}
+	return &widget, nil
+}
+
 // Update modifies an existing widget.
 func (m *WidgetModel) Update(widget *Widget) error {
 	var configJSON []byte
@@ -115,10 +148,10 @@ func (m *WidgetModel) Update(widget *Widget) error {
 			return err
 		}
 	}
-	query := `UPDATE widgets SET type = $1, position = $2, config = $3 WHERE id = $4 
+	query := `UPDATE widgets SET type = $1, position = $2, config = $3, updated_at = $4 WHERE id = $5 
 		    RETURNING updated_at`
 
-	args := []any{widget.Type, widget.Position, configJSON, widget.Id}
+	args := []any{widget.Type, widget.Position, configJSON, widget.UpdatedAt, widget.Id}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()

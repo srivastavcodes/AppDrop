@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -78,37 +79,37 @@ func (b *backend) updateWidgetHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var input struct {
-		Type     *string         `json:"type"`
-		Position *int            `json:"position"`
-		Config   *map[string]any `json:"config"`
+		Type   *string         `json:"type"`
+		Config *map[string]any `json:"config"`
 	}
 	err = b.readJson(w, r, &input)
 	if err != nil {
 		b.badRequestResponse(w, r, err)
 		return
 	}
-	// We need to get the existing widget to update it. Since we don't have a
-	// Get method, we'll create a widget with the ID
-	// and update its fields. In production, you'd want a Get method.
-	widget := &data.Widget{
-		Id: id,
+	widget, err := b.models.Widgets.Get(id)
+	if err != nil {
+		switch {
+		case errors.Is(err, data.ErrRecordNotFound):
+			b.notFoundResponse(w, r)
+		default:
+			b.serverErrorResponse(w, r, err)
+		}
 	}
-
-	// Set fields with defaults (this is a limitation without a Get method)
-	// In a real scenario, you'd fetch the widget first
 	if input.Type != nil {
 		if !allowedWidgetTypes[*input.Type] {
-			b.validationErrorResponse(w, r, "widget type must be one of: banner, product_grid, text, image, spacer")
+			b.validationErrorResponse(
+				w, r,
+				"widget type must be one of: banner, product_grid, text, image, spacer",
+			)
 			return
 		}
 		widget.Type = *input.Type
 	}
-	if input.Position != nil {
-		widget.Position = *input.Position
-	}
 	if input.Config != nil {
 		widget.Config = *input.Config
 	}
+	widget.UpdatedAt = time.Now()
 
 	err = b.models.Widgets.Update(widget)
 	if err != nil {
